@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  elt: 
+    build: 
+      context: ./elt
+      dockerfile: dockerfile
+    networks:
+      - elt_project
+    depends_on:
+      - postgresql_destination
+      - postgresql_source
+    volumes:
+     - ./elt:/app
+    command: ["python", "elt_script.py"]
+      
+  postgresql_destination:
+    image: postgres:latest
+    networks:
+      - elt_project
+    depends_on:
+      - postgresql_source
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+  postgresql_source:
+    image: postgres:latest
+    networks:
+      - elt_project
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./postgresql_source/init.sql:/docker-entrypoint-initdb.d/init.sql
+networks:
+  elt_project:
+      name: elt_project
+      driver: bridge  
