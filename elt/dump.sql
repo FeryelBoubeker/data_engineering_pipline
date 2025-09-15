@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ffNjHwNbYwZ7N3xPKv1n62JhOlKt1lv50HVy8WVyUypFESXgGJm8hm41HcQiOFB
+\restrict 7x6Gnsuyt6lQINcVdbPJEVV4Kpp2EWza4yAmlb5SpvlvAbv88AFvrsSKHCan2ac
 
 -- Dumped from database version 17.6 (Debian 17.6-1.pgdg13+1)
 -- Dumped by pg_dump version 17.6 (Debian 17.6-0+deb13u1)
@@ -457,5 +457,5 @@ ALTER TABLE ONLY public.film_category
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ffNjHwNbYwZ7N3xPKv1n62JhOlKt1lv50HVy8WVyUypFESXgGJm8hm41HcQiOFB
+\unrestrict 7x6Gnsuyt6lQINcVdbPJEVV4Kpp2EWza4yAmlb5SpvlvAbv88AFvrsSKHCan2ac
 

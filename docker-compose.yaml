@@ -34,6 +34,29 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - ./postgresql_source/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.4.7
+    networks:
+      - elt_project
+    environment:
+      DBT_PROFILE: default
+      DBT_TARGET: dev
+    command: 
+      [
+        "run",
+        "--profiles-dir",
+        "/root",
+        "--project-dir",
+        "/dbt",
+        "--full-refresh"
+      ]
+    
+    volumes:
+      - ./dbt_transformation:/dbt
+      - ~/.dbt:/root
+    depends_on:
+      - elt
 networks:
   elt_project:
       name: elt_project
