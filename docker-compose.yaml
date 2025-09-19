@@ -1,18 +1,18 @@
 version: '3'
 
 services:
-  elt: 
-    build: 
-      context: ./elt
-      dockerfile: dockerfile
-    networks:
-      - elt_project
-    depends_on:
-      - postgresql_destination
-      - postgresql_source
-    volumes:
-     - ./elt:/app
-    command: ["python", "elt_script.py"]
+  # elt: 
+  #   build: 
+  #     context: ./elt
+  #     dockerfile: dockerfile
+  #   networks:
+  #     - elt_project
+  #   depends_on:
+  #     - postgresql_destination
+  #     - postgresql_source
+  #   volumes:
+  #    - ./elt:/app
+  #   command: ["python", "elt_script.py"]
       
   postgresql_destination:
     image: postgres:latest
@@ -35,28 +35,105 @@ services:
     volumes:
       - ./postgresql_source/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  dbt:
-    image: ghcr.io/dbt-labs/dbt-postgres:1.4.7
+  # dbt:
+  #   image: ghcr.io/dbt-labs/dbt-postgres:1.4.7
+  #   networks:
+  #     - elt_project
+  #   environment:
+  #     DBT_PROFILE: default
+  #     DBT_TARGET: dev
+  #   command: 
+  #     [
+  #       "run",
+  #       "--profiles-dir",
+  #       "/root",
+  #       "--project-dir",
+  #       "/dbt",
+  #       "--full-refresh"
+  #     ]
+  postgres:
+    image: postgres:latest
     networks:
       - elt_project
     environment:
-      DBT_PROFILE: default
-      DBT_TARGET: dev
-    command: 
-      [
-        "run",
-        "--profiles-dir",
-        "/root",
-        "--project-dir",
-        "/dbt",
-        "--full-refresh"
-      ]
-    
-    volumes:
-      - ./dbt_transformation:/dbt
-      - ~/.dbt:/root
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+
+
+  init_airflow:
+    image: apache/airflow:latest
     depends_on:
-      - elt
+      - postgres
+    networks:
+      - elt_project
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    command: >
+       airflow standalone
+
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    depends_on:
+      - postgres
+    networks:
+      - elt_project
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./elt_script:/opt/airflow/elt_script
+      - ./postgres_transformations:/opt/dbt
+      - ~/.dbt:/root/.dbt
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOAD_EX=n
+      - EXECUTOR=Local
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW_CONN_DESTINATION_POSTGRES=postgres://postgres:secret@destination_postgres:5434/destination_db
+      - AIRFLOW__CORE__FERNET_KEY=cTUeze8st4W4UvPQv5xrDJJ5ozNC51Ofqnv2jUhyOcs=
+      - AIRFLOW__WEBSERVER__DEFAULT_USER_USERNAME=airflow
+      - AIRFLOW__WEBSERVER__DEFAULT_USER_PASSWORD=password
+      - AIRFLOW_WWW_USER_USERNAME=airflow
+      - AIRFLOW_WWW_USER_PASSWORD=password
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret
+    ports:
+      - "8080:8080"
+    command: airflow api-server
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    depends_on:
+      - postgres
+    networks:
+      - elt_project
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./elt_script:/opt/airflow/elt_script
+      - ./postgres_transformations:/dbt
+      - ~/.dbt:/root/.dbt
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOAD_EX=n
+      - EXECUTOR=Local
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW_CONN_DESTINATION_POSTGRES=postgres://postgres:secret@destination_postgres:5434/destination_db
+      - AIRFLOW__CORE__FERNET_KEY=cTUeze8st4W4UvPQv5xrDJJ5ozNC51Ofqnv2jUhyOcs=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret
+      - AIRFLOW_WWW_USER_USERNAME=airflow
+      - AIRFLOW_WWW_USER_PASSWORD=password
+    command: scheduler
+
+
+
 networks:
   elt_project:
       name: elt_project
